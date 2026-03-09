@@ -22,7 +22,17 @@ function createLazySwaggerMiddleware(
 	return async (req, res, next) => {
 		if (!cachedRouter) {
 			const globalConfig = Container.get(GlobalConfig);
-			const n8nPath = globalConfig.path;
+			let n8nPath = globalConfig.path;
+			// Normalize the path to ensure it starts with / and ends with /
+			if (!n8nPath) {
+				n8nPath = '/';
+			}
+			if (!n8nPath.startsWith('/')) {
+				n8nPath = '/' + n8nPath;
+			}
+			if (n8nPath !== '/' && !n8nPath.endsWith('/')) {
+				n8nPath = n8nPath + '/';
+			}
 
 			const { default: YAML } = await import('yamljs');
 			const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;

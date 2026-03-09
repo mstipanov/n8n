@@ -143,7 +143,18 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = this.globalConfig.path;
+		let n8nPath = this.globalConfig.path;
+		// Normalize the path to ensure it starts with / and ends with /
+		// This matches the replacement pattern '/{{BASE_PATH}}/' → n8nPath
+		if (!n8nPath) {
+			n8nPath = '/';
+		}
+		if (!n8nPath.startsWith('/')) {
+			n8nPath = '/' + n8nPath;
+		}
+		if (n8nPath !== '/' && !n8nPath.endsWith('/')) {
+			n8nPath = n8nPath + '/';
+		}
 		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';

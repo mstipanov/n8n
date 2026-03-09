@@ -12,8 +12,16 @@ import type { GlobalConfig } from '@n8n/config';
 export function resolveHealthEndpointPath(globalConfig: GlobalConfig): string {
 	const isHealthEndpointCustomized = process.env.N8N_ENDPOINT_HEALTH !== undefined;
 
-	if (!isHealthEndpointCustomized && globalConfig.path !== '/') {
-		return globalConfig.path + globalConfig.endpoints.health;
+	if (!isHealthEndpointCustomized && globalConfig.path && globalConfig.path !== '/') {
+		// Normalize path to start with / and not end with / (except for / itself)
+		let normalizedPath = globalConfig.path;
+		if (!normalizedPath.startsWith('/')) {
+			normalizedPath = '/' + normalizedPath;
+		}
+		if (normalizedPath.endsWith('/') && normalizedPath !== '/') {
+			normalizedPath = normalizedPath.slice(0, -1);
+		}
+		return normalizedPath + globalConfig.endpoints.health;
 	}
 
 	return globalConfig.endpoints.health;
