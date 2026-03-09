@@ -148,6 +148,20 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
+		// Get the base path and ensure it starts with / and doesn't end with /
+		let basePath = this.globalConfig.path;
+		if (!basePath.startsWith('/')) {
+			basePath = '/' + basePath;
+		}
+		if (basePath.endsWith('/') && basePath !== '/') {
+			basePath = basePath.slice(0, -1);
+		}
+
+		// Helper function to prefix a path with the base path
+		const withBasePath = (path: string) => {
+			return basePath + path;
+		};
+
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
@@ -168,7 +182,10 @@ export class Server extends AbstractServer {
 
 		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
-			this.app.use(...apiRouters);
+			// Mount public API routers with base path
+			for (const router of apiRouters) {
+				this.app.use(withBasePath(publicApiEndpoint), router);
+			}
 			if (frontendService) {
 				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
@@ -186,7 +203,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, app } = this;
 
 		const push = Container.get(Push);
-		push.setupPushHandler(restEndpoint, app);
+		const pushPath = withBasePath(`/${restEndpoint}/push`);
+		push.setupPushHandler(pushPath.substring(1), app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
@@ -220,11 +238,11 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+		this.app.get(withBasePath(`/${this.restEndpoint}/options/timezones`), (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
-		this.configureSettingsRoute();
+		this.configureSettingsRoute(withBasePath);
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -244,12 +262,12 @@ export class Server extends AbstractServer {
 				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
 
 			if (overwriteEndpointMiddleware) {
-				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+				this.app.use(withBasePath(`/${this.endpointPresetCredentials}`), overwriteEndpointMiddleware);
 			}
 
 			const authenticationEnforced = overwriteEndpointMiddleware !== null;
 			this.app.post(
-				`/${this.endpointPresetCredentials}`,
+				withBasePath(`/${this.endpointPresetCredentials}`),
 				async (req: express.Request, res: express.Response) => {
 					try {
 						// If authentication is enforced we can allow multiple overwrites
@@ -304,9 +322,10 @@ export class Server extends AbstractServer {
 			'/types/credentials.json',
 			'/types/node-versions.json',
 		];
+
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
-				path,
+				withBasePath(path),
 				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
 				async (_, res: express.Response) => {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
@@ -320,8 +339,8 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			this.app.use(
 				[
-					'/icons/{@:scope/}:packageName/*path/*file.svg',
-					'/icons/{@:scope/}:packageName/*path/*file.png',
+					withBasePath('/icons/{@:scope/}:packageName/*path/*file.svg'),
+					withBasePath('/icons/{@:scope/}:packageName/*path/*file.png'),
 				],
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
@@ -355,7 +374,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			this.app.use(withBasePath('/schemas/:node/:version{/:resource}{/:operation}.json'), serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -400,12 +419,21 @@ export class Server extends AbstractServer {
 			});
 
 			// Route all UI urls to index.html to support history-api
+			// For the health endpoint, we need to use the relative path (without basePath)
+			// because the middleware is mounted at basePath
+			let healthEndpointRelative = this.endpointHealth;
+			if (basePath !== '/' && this.endpointHealth.startsWith(basePath + '/')) {
+				healthEndpointRelative = this.endpointHealth.substring(basePath.length + 1);
+			} else if (this.endpointHealth.startsWith('/')) {
+				healthEndpointRelative = this.endpointHealth.substring(1);
+			}
+
 			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',
 				'types',
-				this.endpointHealth,
+				healthEndpointRelative,
 				'metrics',
 				'e2e',
 				this.restEndpoint,
@@ -435,13 +463,14 @@ export class Server extends AbstractServer {
 				}
 			};
 			const setCustomCacheHeader = (res: express.Response) => {
+				// res.req.url is the path without the base path when middleware is mounted at basePath
 				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				}
 			};
 
 			this.app.use(
-				'/',
+				basePath,
 				historyApiHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,
@@ -450,20 +479,20 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
-			this.app.use('/', express.static(staticCacheDir, cacheOptions));
+			this.app.use(basePath, express.static(staticCacheDir, cacheOptions));
 		}
 
 		installGlobalProxyAgent();
 	}
 
-	private configureSettingsRoute() {
+	private configureSettingsRoute(withBasePath: (path: string) => string) {
 		const { frontendService } = this;
 		const authService = Container.get(AuthService);
 
 		if (frontendService) {
 			// Returns the current settings for the UI
 			this.app.get(
-				`/${this.restEndpoint}/settings`,
+				withBasePath(`/${this.restEndpoint}/settings`),
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user
@@ -484,8 +513,9 @@ export class Server extends AbstractServer {
 	}
 
 	protected setupPushServer(): void {
-		const { restEndpoint, server, app } = this;
-		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		const { restEndpoint, server, app, basePath } = this;
+		const pushPath = basePath !== '/' ? basePath + `/${restEndpoint}/push` : `/${restEndpoint}/push`;
+		Container.get(Push).setupPushServer(pushPath.substring(1), server, app);
 		Container.get(ChatServer).setup(server, app);
 	}
 }

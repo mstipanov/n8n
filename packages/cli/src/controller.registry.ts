@@ -50,9 +50,24 @@ export class ControllerRegistry {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
-		const basePath = metadata.registerOnRootPath
+		let basePath = metadata.registerOnRootPath
 			? metadata.basePath
 			: `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`;
+
+		// Prefix with the global base path if set
+		let globalBasePath = this.globalConfig.path;
+		if (globalBasePath) {
+			// Normalize the base path
+			if (!globalBasePath.startsWith('/')) {
+				globalBasePath = '/' + globalBasePath;
+			}
+			if (globalBasePath.endsWith('/') && globalBasePath !== '/') {
+				globalBasePath = globalBasePath.slice(0, -1);
+			}
+			if (globalBasePath !== '/') {
+				basePath = globalBasePath + basePath;
+			}
+		}
 		const prefix = basePath.replace(/\/+/g, '/').replace(/\/$/, '');
 		app.use(prefix === '' ? '/' : prefix, router);
 

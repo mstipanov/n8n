@@ -43,6 +43,8 @@ export abstract class AbstractServer {
 
 	protected restEndpoint: string;
 
+	protected basePath: string;
+
 	protected endpointForm: string;
 
 	protected endpointFormTest: string;
@@ -81,8 +83,18 @@ export abstract class AbstractServer {
 		this.sslKey = this.globalConfig.ssl_key;
 		this.sslCert = this.globalConfig.ssl_cert;
 
-		const { endpoints } = this.globalConfig;
+		const { endpoints, path } = this.globalConfig;
 		this.restEndpoint = endpoints.rest;
+
+		// Normalize base path
+		let basePath = path;
+		if (!basePath.startsWith('/')) {
+			basePath = '/' + basePath;
+		}
+		if (basePath.endsWith('/') && basePath !== '/') {
+			basePath = basePath.slice(0, -1);
+		}
+		this.basePath = basePath;
 
 		this.endpointForm = endpoints.form;
 		this.endpointFormTest = endpoints.formTest;
@@ -275,8 +287,9 @@ export abstract class AbstractServer {
 			const testWebhooks = Container.get(TestWebhooks);
 			// Removes a test webhook
 			// TODO UM: check if this needs validation with user management.
+			const path = this.basePath !== '/' ? this.basePath + `/${this.restEndpoint}/test-webhook/:id` : `/${this.restEndpoint}/test-webhook/:id`;
 			this.app.delete(
-				`/${this.restEndpoint}/test-webhook/:id`,
+				path,
 				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
 			);
 		}
