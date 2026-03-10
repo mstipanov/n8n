@@ -211,12 +211,27 @@ export class AuthService {
 
 		const token = this.issueJWT(user, usedMfa, browserId);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
-		res.cookie(AUTH_COOKIE_NAME, token, {
+		const cookieOptions: any = {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
 			sameSite: samesite,
 			secure,
-		});
+		};
+		// Set cookie path to base path or root
+		let cookiePath = this.globalConfig.path;
+		if (cookiePath && cookiePath !== '/') {
+			// Normalize: ensure starts with /, remove trailing /
+			if (!cookiePath.startsWith('/')) {
+				cookiePath = '/' + cookiePath;
+			}
+			if (cookiePath.endsWith('/')) {
+				cookiePath = cookiePath.slice(0, -1);
+			}
+			cookieOptions.path = cookiePath;
+		} else {
+			cookieOptions.path = '/';
+		}
+		res.cookie(AUTH_COOKIE_NAME, token, cookieOptions);
 	}
 
 	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
