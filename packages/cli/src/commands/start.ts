@@ -155,6 +155,18 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (n8nPath !== '/' && !n8nPath.endsWith('/')) {
 			n8nPath = n8nPath + '/';
 		}
+		// Also create a version without slashes for {{BASE_PATH}} replacement
+		let n8nPathWithoutSlashes = n8nPath;
+		if (n8nPathWithoutSlashes.startsWith('/')) {
+			n8nPathWithoutSlashes = n8nPathWithoutSlashes.slice(1);
+		}
+		if (n8nPathWithoutSlashes.endsWith('/')) {
+			n8nPathWithoutSlashes = n8nPathWithoutSlashes.slice(0, -1);
+		}
+		// If n8nPath is '/', n8nPathWithoutSlashes will be empty, set it to empty string
+		if (n8nPathWithoutSlashes === '') {
+			n8nPathWithoutSlashes = '';
+		}
 		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';
@@ -177,6 +189,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
+					// Also replace {{BASE_PATH}} without slashes for JavaScript files
+					replaceStream('{{BASE_PATH}}', n8nPathWithoutSlashes, { ignoreCase: false }),
+					replaceStream('%7B%7BBASE_PATH%7D%7D', n8nPathWithoutSlashes, { ignoreCase: false }),
+					replaceStream('%257B%257BBASE_PATH%257D%257D', n8nPathWithoutSlashes, { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
