@@ -294,7 +294,28 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		// Strip base path from endpoint for comparison with skip list
+		let normalizedEndpoint = endpoint;
+		const basePath = this.globalConfig.path;
+		if (basePath && basePath !== '/') {
+			// Normalize base path similar to cookie path normalization
+			let normalizedBasePath = basePath;
+			if (!normalizedBasePath.startsWith('/')) {
+				normalizedBasePath = '/' + normalizedBasePath;
+			}
+			if (normalizedBasePath.endsWith('/')) {
+				normalizedBasePath = normalizedBasePath.slice(0, -1);
+			}
+
+			// Check if endpoint starts with base path
+			if (normalizedEndpoint.startsWith(normalizedBasePath + '/')) {
+				normalizedEndpoint = normalizedEndpoint.slice(normalizedBasePath.length);
+			} else if (normalizedEndpoint === normalizedBasePath) {
+				normalizedEndpoint = '/';
+			}
+		}
+
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(normalizedEndpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
