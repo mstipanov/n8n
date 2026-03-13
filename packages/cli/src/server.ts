@@ -337,46 +337,41 @@ export class Server extends AbstractServer {
 		});
 
 		if (frontendService) {
-			this.app.use(
-				[
-					withBasePath('/icons/*'),
-				],
-				async (req, res) => {
-					console.log('Icons route matched:', req.path, req.params);
-					// Parse the path: /icons/packageName/rest/of/path.svg
-					const path = req.params[0];
-					if (!path) {
-						return res.sendStatus(404);
-					}
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				// Parse the path: /icons/packageName/rest/of/path.svg
+				const path = req.params[0];
+				if (!path) {
+					return res.sendStatus(404);
+				}
 
-					// Parse package name from path
-					const parts = path.split('/');
-					if (parts.length < 2) {
-						return res.sendStatus(404);
-					}
+				// Parse package name from path
+				const parts = path.split('/');
+				if (parts.length < 2) {
+					return res.sendStatus(404);
+				}
 
-					let packageName = parts[0];
-					// Check if packageName starts with @ (scoped package)
-					if (packageName.startsWith('@') && parts.length >= 2) {
-						packageName = `${packageName}/${parts[1]}`;
-						parts.shift(); // Remove @scope
-						parts[0] = packageName; // Combine @scope/package
-					}
+				let packageName = parts[0];
+				// Check if packageName starts with @ (scoped package)
+				if (packageName.startsWith('@') && parts.length >= 2) {
+					packageName = `${packageName}/${parts[1]}`;
+					parts.shift(); // Remove @scope
+					parts[0] = packageName; // Combine @scope/package
+				}
 
-					// Reconstruct the icon path relative to package
-					const iconPath = parts.slice(1).join('/');
-					// Build the URL for resolveIcon: /icons/packageName/iconPath
-					const iconUrl = `/icons/${packageName}/${iconPath}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, iconUrl);
-					if (filePath) {
-						try {
-							await fsAccess(filePath);
-							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
-						} catch {}
-					}
-					res.sendStatus(404);
-				},
-			);
+				// Reconstruct the icon path relative to package
+				const iconPath = parts.slice(1).join('/');
+				// Build the URL for resolveIcon: /icons/packageName/iconPath
+				const iconUrl = `/icons/${packageName}/${iconPath}`;
+				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, iconUrl);
+				if (filePath) {
+					try {
+						await fsAccess(filePath);
+						return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+					} catch {}
+				}
+				res.sendStatus(404);
+			};
+			this.app.use(withBasePath('/icons/*'), serveIcons);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
 				const { node, version, resource, operation } = req.params;
