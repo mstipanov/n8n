@@ -346,7 +346,16 @@ export class Server extends AbstractServer {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					// Strip base path from the URL before passing to resolveIcon
+					let iconUrl = req.path;
+					if (iconUrl.startsWith(basePath)) {
+						iconUrl = iconUrl.slice(basePath.length);
+					}
+					// Ensure it starts with /
+					if (!iconUrl.startsWith('/')) {
+						iconUrl = '/' + iconUrl;
+					}
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, iconUrl);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
