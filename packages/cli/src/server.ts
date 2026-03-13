@@ -339,22 +339,34 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			this.app.use(
 				[
-					withBasePath('/icons/{@:scope/}:packageName/*path/*file.svg'),
-					withBasePath('/icons/{@:scope/}:packageName/*path/*file.png'),
+					withBasePath('/icons/*'),
 				],
 				async (req, res) => {
-					// eslint-disable-next-line prefer-const
-					let { scope, packageName } = req.params;
-					if (scope) packageName = `@${scope}/${packageName}`;
-					// Strip base path from the URL before passing to resolveIcon
-					let iconUrl = req.path;
-					if (iconUrl.startsWith(basePath)) {
-						iconUrl = iconUrl.slice(basePath.length);
+					console.log('Icons route matched:', req.path, req.params);
+					// Parse the path: /icons/packageName/rest/of/path.svg
+					const path = req.params[0];
+					if (!path) {
+						return res.sendStatus(404);
 					}
-					// Ensure it starts with /
-					if (!iconUrl.startsWith('/')) {
-						iconUrl = '/' + iconUrl;
+
+					// Parse package name from path
+					const parts = path.split('/');
+					if (parts.length < 2) {
+						return res.sendStatus(404);
 					}
+
+					let packageName = parts[0];
+					// Check if packageName starts with @ (scoped package)
+					if (packageName.startsWith('@') && parts.length >= 2) {
+						packageName = `${packageName}/${parts[1]}`;
+						parts.shift(); // Remove @scope
+						parts[0] = packageName; // Combine @scope/package
+					}
+
+					// Reconstruct the icon path relative to package
+					const iconPath = parts.slice(1).join('/');
+					// Build the URL for resolveIcon: /icons/packageName/iconPath
+					const iconUrl = `/icons/${packageName}/${iconPath}`;
 					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, iconUrl);
 					if (filePath) {
 						try {
