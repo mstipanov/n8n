@@ -378,7 +378,12 @@ export class Server extends AbstractServer {
 			this.app.use(withBasePath('/icons/:path*'), serveIcons);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
-				const { node, version, resource, operation } = req.params;
+				const { node, version } = req.params;
+				const rest = req.params.rest ?? '';
+				// rest can be '', 'resource.json', or 'resource/operation.json'
+				const parts = rest.replace(/\.json$/, '').split('/').filter(Boolean);
+				const resource = parts[0] as string | undefined;
+				const operation = parts[1] as string | undefined;
 				const filePath = this.loadNodesAndCredentials.resolveSchema({
 					node,
 					resource,
@@ -394,7 +399,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use(withBasePath('/schemas/:node/:version/:resource?/:operation?.json'), serveSchemas);
+			this.app.use(withBasePath('/schemas/:node/:version/*rest'), serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
