@@ -339,7 +339,7 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				// Parse the path: /icons/packageName/rest/of/path.svg
-				const path = req.params[0];
+				const path = req.params.splat;
 				if (!path) {
 					res.sendStatus(404);
 					return;
@@ -375,7 +375,7 @@ export class Server extends AbstractServer {
 				res.sendStatus(404);
 				return;
 			};
-			this.app.use(withBasePath('/icons/*'), serveIcons);
+			this.app.use(withBasePath('/icons/*splat'), serveIcons);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
 				const { node, version, resource, operation } = req.params;
