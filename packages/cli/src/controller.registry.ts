@@ -69,7 +69,12 @@ export class ControllerRegistry {
 			}
 		}
 		const prefix = basePath.replace(/\/+/g, '/').replace(/\/$/, '');
-		app.use(prefix === '' ? '/' : prefix, router);
+		try {
+			app.use(prefix === '' ? '/' : prefix, router);
+		} catch (error) {
+			console.error(`[path-to-regexp DEBUG] Error mounting controller "${controllerClass.name}" at prefix: "${prefix}"`);
+			throw error;
+		}
 
 		const controller = Container.get(controllerClass) as Controller;
 		const controllerMiddlewares = metadata.middlewares.map(
@@ -86,7 +91,12 @@ export class ControllerRegistry {
 					);
 				}
 				const middlewares = this.buildMiddlewares(routerConfig, controllerMiddlewares);
-				router.use(routerConfig.path, ...middlewares, routerConfig.router);
+				try {
+					router.use(routerConfig.path, ...middlewares, routerConfig.router);
+				} catch (error) {
+					console.error(`[path-to-regexp DEBUG] Error registering static router path: "${routerConfig.path}" in controller "${controllerClass.name}"`);
+					throw error;
+				}
 			}
 		}
 
@@ -135,7 +145,12 @@ export class ControllerRegistry {
 					}
 				: send(handler);
 
-			router[route.method](route.path, ...middlewares, finalHandler);
+			try {
+				router[route.method](route.path, ...middlewares, finalHandler);
+			} catch (error) {
+				console.error(`[path-to-regexp DEBUG] Error registering route: ${route.method.toUpperCase()} "${route.path}" in controller "${controllerClass.name}"`);
+				throw error;
+			}
 		}
 	}
 
