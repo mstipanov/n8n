@@ -368,10 +368,12 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+						res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+						return;
 					} catch {}
 				}
 				res.sendStatus(404);
+				return;
 			};
 			this.app.use(withBasePath('/icons/*'), serveIcons);
 
