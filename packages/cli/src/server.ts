@@ -339,7 +339,7 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				// Parse the path: /icons/packageName/rest/of/path.svg
-				const path = req.params.path ? req.params.path.join('/') : '';
+				const path = req.params.path ? req.params.path : '';
 				if (!path) {
 					res.sendStatus(404);
 					return;
@@ -394,7 +394,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use(withBasePath('/schemas/:node/:version{/:resource}{/:operation}.json'), serveSchemas);
+			this.app.use(withBasePath('/schemas/:node/:version/:resource?/:operation?.json'), serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
