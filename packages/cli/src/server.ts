@@ -341,13 +341,15 @@ export class Server extends AbstractServer {
 				// Parse the path: /icons/packageName/rest/of/path.svg
 				const path = req.params[0];
 				if (!path) {
-					return res.sendStatus(404);
+					res.sendStatus(404);
+					return;
 				}
 
 				// Parse package name from path
 				const parts = path.split('/');
 				if (parts.length < 2) {
-					return res.sendStatus(404);
+					res.sendStatus(404);
+					return;
 				}
 
 				let packageName = parts[0];
