@@ -159,7 +159,7 @@ export class Server extends AbstractServer {
 
 		// Helper function to prefix a path with the base path
 		const withBasePath = (path: string) => {
-			return basePath === '/' ? path : basePath + path;
+			return basePath + path;
 		};
 
 		if (this.globalConfig.endpoints.metrics.enable) {
@@ -203,8 +203,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, app } = this;
 
 		const push = Container.get(Push);
-		const pushBasePath = withBasePath(`/${restEndpoint}`);
-		push.setupPushHandler(pushBasePath.substring(1), app);
+		const pushPath = withBasePath(`/${restEndpoint}/push`);
+		push.setupPushHandler(pushPath.substring(1), app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
@@ -339,20 +339,14 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			this.app.use(
 				[
-					withBasePath('/icons/(@:scope/)?:packageName/*path/*file.svg'),
-					withBasePath('/icons/(@:scope/)?:packageName/*path/*file.png'),
+					withBasePath('/icons/{@:scope/}:packageName/*path/*file.svg'),
+					withBasePath('/icons/{@:scope/}:packageName/*path/*file.png'),
 				],
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					// Strip basePath from req.path since resolveIcon expects /icons/packageName/ prefix
-					// basePath is normalized: trailing slash removed, could be "/" or "/infobip-noc-n8n"
-					let urlPath = req.path;
-					if (basePath && basePath !== '/') {
-						urlPath = req.path.substring(basePath.length);
-					}
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, urlPath);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
@@ -520,7 +514,7 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app, basePath } = this;
-		const pushPath = basePath !== '/' ? basePath + `/${restEndpoint}` : `/${restEndpoint}`;
+		const pushPath = basePath !== '/' ? basePath + `/${restEndpoint}/push` : `/${restEndpoint}/push`;
 		Container.get(Push).setupPushServer(pushPath.substring(1), server, app);
 		Container.get(ChatServer).setup(server, app);
 	}
