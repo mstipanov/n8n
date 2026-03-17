@@ -71,35 +71,6 @@ export abstract class AbstractServer {
 
 	constructor() {
 		this.app = express();
-
-		// DEBUG: Wrap Express route registration methods to log the pattern that causes path-to-regexp errors
-		const originalUse = this.app.use.bind(this.app);
-		const originalAll = this.app.all.bind(this.app);
-		const originalGet = this.app.get.bind(this.app);
-		const originalPost = this.app.post.bind(this.app);
-		const originalPut = this.app.put.bind(this.app);
-		const originalDelete = this.app.delete.bind(this.app);
-		const originalPatch = this.app.patch.bind(this.app);
-		const wrapMethod = (name: string, original: (...args: unknown[]) => unknown) => {
-			return (...args: unknown[]) => {
-				const pattern = typeof args[0] === 'string' ? args[0] : undefined;
-				try {
-					return original(...args);
-				} catch (error) {
-					console.error(`[path-to-regexp DEBUG] Error in app.${name}() with pattern: "${pattern}"`);
-					console.error(`[path-to-regexp DEBUG] All args:`, args.map((a) => typeof a === 'string' ? a : typeof a).join(', '));
-					throw error;
-				}
-			};
-		};
-		this.app.use = wrapMethod('use', originalUse) as typeof this.app.use;
-		this.app.all = wrapMethod('all', originalAll) as typeof this.app.all;
-		(this.app as unknown as Record<string, unknown>).get = wrapMethod('get', originalGet);
-		this.app.post = wrapMethod('post', originalPost) as typeof this.app.post;
-		this.app.put = wrapMethod('put', originalPut) as typeof this.app.put;
-		this.app.delete = wrapMethod('delete', originalDelete) as typeof this.app.delete;
-		this.app.patch = wrapMethod('patch', originalPatch) as typeof this.app.patch;
-
 		this.app.disable('x-powered-by');
 		this.app.set('query parser', 'extended');
 		this.app.engine('handlebars', createHandlebarsEngine());
@@ -273,23 +244,13 @@ export abstract class AbstractServer {
 
 			// Register a handler for waiting forms
 			this.app.all(
-				'/' + this.endpointFormWaiting + '/:path/:suffix',
-				createWebhookHandlerFor(Container.get(WaitingForms)),
-			);
-
-			this.app.all(
-				'/' + this.endpointFormWaiting + '/:path',
+				`/${this.endpointFormWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
 			this.app.all(
-				'/' + this.endpointWebhookWaiting + '/:path/:suffix',
-				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
-			);
-
-			this.app.all(
-				'/' + this.endpointWebhookWaiting + '/:path',
+				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 

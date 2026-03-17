@@ -337,53 +337,28 @@ export class Server extends AbstractServer {
 		});
 
 		if (frontendService) {
-			const serveIcons: express.RequestHandler = async (req, res) => {
-				// Parse the path: /icons/packageName/rest/of/path.svg
-				const path = req.params.path ? req.params.path : '';
-				if (!path) {
-					res.sendStatus(404);
-					return;
-				}
-
-				// Parse package name from path
-				const parts = path.split('/');
-				if (parts.length < 2) {
-					res.sendStatus(404);
-					return;
-				}
-
-				let packageName = parts[0];
-				// Check if packageName starts with @ (scoped package)
-				if (packageName.startsWith('@') && parts.length >= 2) {
-					packageName = `${packageName}/${parts[1]}`;
-					parts.shift(); // Remove @scope
-					parts[0] = packageName; // Combine @scope/package
-				}
-
-				// Reconstruct the icon path relative to package
-				const iconPath = parts.slice(1).join('/');
-				// Build the URL for resolveIcon: /icons/packageName/iconPath
-				const iconUrl = `/icons/${packageName}/${iconPath}`;
-				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, iconUrl);
+			this.app.use(
+				[
+					withBasePath('/icons/{@:scope/}:packageName/*path/*file.svg'),
+					withBasePath('/icons/{@:scope/}:packageName/*path/*file.png'),
+				],
+				async (req, res) => {
+					// eslint-disable-next-line prefer-const
+					let { scope, packageName } = req.params;
+					if (scope) packageName = `@${scope}/${packageName}`;
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
-						return;
+							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
 					} catch {}
 				}
 				res.sendStatus(404);
-				return;
-			};
-			this.app.use(withBasePath('/icons/:path*'), serveIcons);
+				},
+			);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
-				const { node, version } = req.params;
-				const rest = req.params.rest ?? '';
-				// rest can be '', 'resource.json', or 'resource/operation.json'
-				const parts = rest.replace(/\.json$/, '').split('/').filter(Boolean);
-				const resource = parts[0] as string | undefined;
-				const operation = parts[1] as string | undefined;
+				const { node, version, resource, operation } = req.params;
 				const filePath = this.loadNodesAndCredentials.resolveSchema({
 					node,
 					resource,
@@ -399,7 +374,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use(withBasePath('/schemas/:node/:version/*rest'), serveSchemas);
+			this.app.use(withBasePath('/schemas/:node/:version{/:resource}{/:operation}.json'), serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
