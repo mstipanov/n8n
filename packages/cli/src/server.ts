@@ -203,8 +203,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, app } = this;
 
 		const push = Container.get(Push);
-		const pushPath = withBasePath(`/${restEndpoint}/push`);
-		push.setupPushHandler(pushPath.substring(1), app);
+		const pushPrefix = withBasePath(`/${restEndpoint}`);
+		push.setupPushHandler(pushPrefix.substring(1), app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
@@ -514,8 +514,8 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app, basePath } = this;
-		const pushPath = basePath !== '/' ? basePath + `/${restEndpoint}/push` : `/${restEndpoint}/push`;
-		Container.get(Push).setupPushServer(pushPath.substring(1), server, app);
+		const pushPrefix = basePath !== '/' ? basePath + `/${restEndpoint}` : `/${restEndpoint}`;
+		Container.get(Push).setupPushServer(pushPrefix.substring(1), server, app);
 		Container.get(ChatServer).setup(server, app);
 	}
 }
