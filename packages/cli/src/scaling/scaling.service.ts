@@ -294,7 +294,13 @@ export class ScalingService {
 
 	// #region Listeners
 
+	private _listenersRegistered = false;
+
 	private registerListeners() {
+		// Prevent duplicate listener registration
+		if (this._listenersRegistered) return;
+		this._listenersRegistered = true;
+
 		const { instanceType } = this.instanceSettings;
 		if (instanceType === 'main' || instanceType === 'webhook') {
 			this.registerMainOrWebhookListeners();

@@ -204,26 +204,48 @@ export class LoadNodesAndCredentials {
 	 * Besides having different icon loading strategies, encoding an absolute path in URLs seems a security risk.
 	 */
 	resolveIcon(packageName: string, url: string): string | undefined {
+		this.logger.debug('resolveIcon called:', { packageName, url });
+
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
+		this.logger.debug('Is custom package:', { isCustom, CUSTOM_NODES_PACKAGE_NAME });
+
 		const loader = this.loaders[packageName];
 		if (!loader) {
+			this.logger.debug('No loader found for package:', { packageName, availableLoaders: Object.keys(this.loaders) });
 			return undefined;
 		}
 
+		this.logger.debug('Loader found:', { packageName, loaderDirectory: loader.directory, loaderType: loader.constructor.name });
+
 		const resolvePath = (iconPath: string) => {
-			return path.resolve(loader.directory, iconPath);
+			const resolved = path.resolve(loader.directory, iconPath);
+			this.logger.debug('resolvePath called:', { iconPath, loaderDirectory: loader.directory, resolved });
+			return resolved;
 		};
 
 		const resolvePathCustom = (path: string) => {
-			if (isWindowsFilePath(path)) return path;
-			return path.startsWith('/') ? path : '/' + path;
+			if (isWindowsFilePath(path)) {
+				this.logger.debug('resolvePathCustom - Windows path:', { path });
+				return path;
+			}
+			const result = path.startsWith('/') ? path : '/' + path;
+			this.logger.debug('resolvePathCustom:', { path, result });
+			return result;
 		};
 
 		const pathPrefix = `/icons/${packageName}/`;
-		const urlFilePath = url.substring(pathPrefix.length);
-		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
+		this.logger.debug('Path prefix:', { pathPrefix });
 
-		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
+		const urlFilePath = url.substring(pathPrefix.length);
+		this.logger.debug('URL file path:', { urlFilePath, url, pathPrefixLength: pathPrefix.length });
+
+		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
+		this.logger.debug('Final file path:', { filePath, isCustom });
+
+		const isContained = isContainedWithin(loader.directory, filePath);
+		this.logger.debug('Path containment check:', { loaderDirectory: loader.directory, filePath, isContained });
+
+		return isContained ? filePath : undefined;
 	}
 
 	resolveSchema({

@@ -10,7 +10,7 @@ import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { resolve } from 'path';
+import path from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import { AuthService } from '@/auth/auth.service';
@@ -237,7 +237,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		// Returns all the available timezones
-		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
+		const tzDataFile = path.resolve(CLI_DIR, 'dist/timezones.json');
 		this.app.get(withBasePath(`/${this.restEndpoint}/options/timezones`), (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
@@ -336,7 +336,13 @@ export class Server extends AbstractServer {
 			);
 		});
 
+		this.logger.debug('Setting up icon routes, frontendService:', {
+			hasFrontendService: !!frontendService,
+			frontendServiceType: frontendService?.constructor?.name
+		});
+
 		if (frontendService) {
+			this.logger.debug('Registering icon routes');
 			this.app.use(
 				[
 					withBasePath('/icons/{@:scope/}:packageName/*path/*file.svg'),
@@ -345,14 +351,73 @@ export class Server extends AbstractServer {
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
-					if (scope) packageName = `@${scope}/${packageName}`;
+
+					// Debug logging
+					this.logger.debug('=== ICON REQUEST START ===');
+					this.logger.debug('Icon request details:', {
+						originalUrl: req.originalUrl,
+						url: req.url,
+						basePath: this.basePath,
+						params: req.params,
+						scope,
+						packageName,
+						fullUrl: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+						path: req.path,
+						query: req.query,
+						headers: {
+							host: req.get('host'),
+							'user-agent': req.get('user-agent'),
+							referer: req.get('referer')
+						}
+					});
+
+					if (scope) {
+						const oldPackageName = packageName;
+						packageName = `@${scope}/${packageName}`;
+						this.logger.debug('Scope applied:', { oldPackageName, newPackageName: packageName, scope });
+					}
+
+					this.logger.debug('Calling resolveIcon:', { packageName, originalUrl: req.originalUrl });
+					this.logger.debug('loadNodesAndCredentials instance:', {
+						instanceType: this.loadNodesAndCredentials?.constructor?.name,
+						hasResolveIcon: typeof this.loadNodesAndCredentials?.resolveIcon === 'function'
+					});
+
 					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+
+					this.logger.debug('Icon resolution result:', {
+						filePath,
+						packageName,
+						originalUrl: req.originalUrl,
+						fileExists: filePath ? 'to be checked' : 'no file path returned'
+					});
+
 				if (filePath) {
 					try {
+						this.logger.debug('Checking if icon file exists:', {
+							filePath,
+							absolutePath: path.isAbsolute(filePath) ? 'yes' : 'no'
+						});
 						await fsAccess(filePath);
+						this.logger.debug('Icon file exists, serving:', {
+							filePath
+						});
 							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
-					} catch {}
+					} catch (error) {
+						this.logger.debug('Icon file access error:', {
+							filePath,
+							error: (error as Error).message,
+							errorStack: (error as Error).stack,
+							errorName: (error as Error).name
+						});
+						// Continue to 404
+					}
+				} else {
+					this.logger.debug('No file path returned from resolveIcon');
 				}
+
+				this.logger.debug('Icon not found, returning 404');
+				this.logger.debug('=== ICON REQUEST END ===');
 				res.sendStatus(404);
 				},
 			);
@@ -370,7 +435,9 @@ export class Server extends AbstractServer {
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
-					} catch {}
+					} catch {
+						// File doesn't exist or can't be accessed
+					}
 				}
 				res.sendStatus(404);
 			};
