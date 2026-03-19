@@ -236,8 +236,8 @@ export class LoadNodesAndCredentials {
 		const pathPrefix = `/icons/${packageName}/`;
 		this.logger.warn(`Path prefix: pathPrefix="${pathPrefix}"`);
 
-		const urlFilePath = url.substring(pathPrefix.length);
-		this.logger.warn(`URL file path: urlFilePath="${urlFilePath}", url="${url}", pathPrefixLength=${pathPrefix.length}`);
+		const urlFilePath = url.substring(pathPrefix.length).replace(/^\//, '');
+		this.logger.warn(`URL file path: urlFilePath="${urlFilePath}", url="${url}", pathPrefixLength=${pathPrefix.length}, substring="${url.substring(pathPrefix.length)}"`);
 
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 		this.logger.warn(`Final file path: filePath="${filePath}", isCustom=${isCustom}`);

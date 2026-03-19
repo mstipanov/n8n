@@ -359,12 +359,13 @@ export class Server extends AbstractServer {
 						this.logger.warn(`Scope applied: oldPackageName="${oldPackageName}", newPackageName="${packageName}", scope="${scope}"`);
 					}
 
-					this.logger.warn(`Calling resolveIcon: packageName="${packageName}", originalUrl="${req.originalUrl}"`);
+					const pathWithoutBase = req.originalUrl.substring(this.basePath.length);
+					this.logger.warn(`Calling resolveIcon: packageName="${packageName}", pathWithoutBase="${pathWithoutBase}", originalUrl="${req.originalUrl}", basePath="${this.basePath}"`);
 					this.logger.warn(`loadNodesAndCredentials instance: instanceType="${this.loadNodesAndCredentials?.constructor?.name}", hasResolveIcon=${typeof this.loadNodesAndCredentials?.resolveIcon === 'function'}`);
 
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, pathWithoutBase);
 
-					this.logger.warn(`Icon resolution result: filePath="${filePath}", packageName="${packageName}", originalUrl="${req.originalUrl}", fileExists=${filePath ? 'to be checked' : 'no file path returned'}`);
+					this.logger.warn(`Icon resolution result: filePath="${filePath}", packageName="${packageName}", pathWithoutBase="${pathWithoutBase}", fileExists=${filePath ? 'to be checked' : 'no file path returned'}`);
 
 				if (filePath) {
 					try {
@@ -373,8 +374,8 @@ export class Server extends AbstractServer {
 						this.logger.warn(`Icon file exists, serving: filePath="${filePath}"`);
 							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
 					} catch (error) {
-						const err = error as Error;
-						this.logger.warn(`Icon file access error: filePath="${filePath}", error="${err.message}", errorName="${err.name}"`);
+						const errorObj = error as Error;
+						this.logger.warn(`Icon file access error: filePath="${filePath}", error="${errorObj.message}", errorName="${errorObj.name}"`);
 						// Continue to 404
 					}
 				} else {
