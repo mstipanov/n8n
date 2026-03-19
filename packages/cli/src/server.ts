@@ -100,7 +100,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
-		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
+		this.logger.warn(`Server ID: ${this.instanceSettings.hostId}`);
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
@@ -336,13 +336,13 @@ export class Server extends AbstractServer {
 			);
 		});
 
-		this.logger.debug('Setting up icon routes, frontendService:', {
+		this.logger.error('Setting up icon routes, frontendService:', {
 			hasFrontendService: !!frontendService,
 			frontendServiceType: frontendService?.constructor?.name
 		});
 
 		if (frontendService) {
-			this.logger.debug('Registering icon routes');
+			this.logger.warn('Registering icon routes');
 			this.app.use(
 				[
 					withBasePath('/icons/{@:scope/}:packageName/*path/*file.svg'),
@@ -353,8 +353,8 @@ export class Server extends AbstractServer {
 					let { scope, packageName } = req.params;
 
 					// Debug logging
-					this.logger.debug('=== ICON REQUEST START ===');
-					this.logger.debug('Icon request details:', {
+					this.logger.error('=== ICON REQUEST START ===');
+					this.logger.warn('Icon request details:', {
 						originalUrl: req.originalUrl,
 						url: req.url,
 						basePath: this.basePath,
@@ -374,18 +374,18 @@ export class Server extends AbstractServer {
 					if (scope) {
 						const oldPackageName = packageName;
 						packageName = `@${scope}/${packageName}`;
-						this.logger.debug('Scope applied:', { oldPackageName, newPackageName: packageName, scope });
+						this.logger.warn('Scope applied:', { oldPackageName, newPackageName: packageName, scope });
 					}
 
-					this.logger.debug('Calling resolveIcon:', { packageName, originalUrl: req.originalUrl });
-					this.logger.debug('loadNodesAndCredentials instance:', {
+					this.logger.warn('Calling resolveIcon:', { packageName, originalUrl: req.originalUrl });
+					this.logger.warn('loadNodesAndCredentials instance:', {
 						instanceType: this.loadNodesAndCredentials?.constructor?.name,
 						hasResolveIcon: typeof this.loadNodesAndCredentials?.resolveIcon === 'function'
 					});
 
 					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
 
-					this.logger.debug('Icon resolution result:', {
+					this.logger.warn('Icon resolution result:', {
 						filePath,
 						packageName,
 						originalUrl: req.originalUrl,
@@ -394,17 +394,17 @@ export class Server extends AbstractServer {
 
 				if (filePath) {
 					try {
-						this.logger.debug('Checking if icon file exists:', {
+						this.logger.warn('Checking if icon file exists:', {
 							filePath,
 							absolutePath: path.isAbsolute(filePath) ? 'yes' : 'no'
 						});
 						await fsAccess(filePath);
-						this.logger.debug('Icon file exists, serving:', {
+						this.logger.warn('Icon file exists, serving:', {
 							filePath
 						});
 							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
 					} catch (error) {
-						this.logger.debug('Icon file access error:', {
+						this.logger.warn('Icon file access error:', {
 							filePath,
 							error: (error as Error).message,
 							errorStack: (error as Error).stack,
@@ -413,11 +413,11 @@ export class Server extends AbstractServer {
 						// Continue to 404
 					}
 				} else {
-					this.logger.debug('No file path returned from resolveIcon');
+					this.logger.warn('No file path returned from resolveIcon');
 				}
 
-				this.logger.debug('Icon not found, returning 404');
-				this.logger.debug('=== ICON REQUEST END ===');
+				this.logger.error('Icon not found, returning 404');
+				this.logger.error('=== ICON REQUEST END ===');
 				res.sendStatus(404);
 				},
 			);

@@ -204,46 +204,46 @@ export class LoadNodesAndCredentials {
 	 * Besides having different icon loading strategies, encoding an absolute path in URLs seems a security risk.
 	 */
 	resolveIcon(packageName: string, url: string): string | undefined {
-		this.logger.debug('resolveIcon called:', { packageName, url });
+		this.logger.warn('resolveIcon called:', { packageName, url });
 
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
-		this.logger.debug('Is custom package:', { isCustom, CUSTOM_NODES_PACKAGE_NAME });
+		this.logger.warn('Is custom package:', { isCustom, CUSTOM_NODES_PACKAGE_NAME });
 
 		const loader = this.loaders[packageName];
 		if (!loader) {
-			this.logger.debug('No loader found for package:', { packageName, availableLoaders: Object.keys(this.loaders) });
+			this.logger.error('No loader found for package:', { packageName, availableLoaders: Object.keys(this.loaders) });
 			return undefined;
 		}
 
-		this.logger.debug('Loader found:', { packageName, loaderDirectory: loader.directory, loaderType: loader.constructor.name });
+		this.logger.warn('Loader found:', { packageName, loaderDirectory: loader.directory, loaderType: loader.constructor.name });
 
 		const resolvePath = (iconPath: string) => {
 			const resolved = path.resolve(loader.directory, iconPath);
-			this.logger.debug('resolvePath called:', { iconPath, loaderDirectory: loader.directory, resolved });
+			this.logger.warn('resolvePath called:', { iconPath, loaderDirectory: loader.directory, resolved });
 			return resolved;
 		};
 
 		const resolvePathCustom = (path: string) => {
 			if (isWindowsFilePath(path)) {
-				this.logger.debug('resolvePathCustom - Windows path:', { path });
+				this.logger.warn('resolvePathCustom - Windows path:', { path });
 				return path;
 			}
 			const result = path.startsWith('/') ? path : '/' + path;
-			this.logger.debug('resolvePathCustom:', { path, result });
+			this.logger.warn('resolvePathCustom:', { path, result });
 			return result;
 		};
 
 		const pathPrefix = `/icons/${packageName}/`;
-		this.logger.debug('Path prefix:', { pathPrefix });
+		this.logger.warn('Path prefix:', { pathPrefix });
 
 		const urlFilePath = url.substring(pathPrefix.length);
-		this.logger.debug('URL file path:', { urlFilePath, url, pathPrefixLength: pathPrefix.length });
+		this.logger.warn('URL file path:', { urlFilePath, url, pathPrefixLength: pathPrefix.length });
 
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
-		this.logger.debug('Final file path:', { filePath, isCustom });
+		this.logger.warn('Final file path:', { filePath, isCustom });
 
 		const isContained = isContainedWithin(loader.directory, filePath);
-		this.logger.debug('Path containment check:', { loaderDirectory: loader.directory, filePath, isContained });
+		this.logger.warn('Path containment check:', { loaderDirectory: loader.directory, filePath, isContained });
 
 		return isContained ? filePath : undefined;
 	}
@@ -367,7 +367,7 @@ export class LoadNodesAndCredentials {
 		const isEnabled = this.shouldInjectContextEstablishmentHooks();
 
 		if (!isEnabled) {
-			this.logger.debug('Context establishment hooks feature is disabled');
+			this.logger.warn('Context establishment hooks feature is disabled');
 			return;
 		}
 
@@ -375,7 +375,7 @@ export class LoadNodesAndCredentials {
 			node.group.includes('trigger'),
 		);
 
-		this.logger.debug(
+		this.logger.warn(
 			`Injecting context establishment hooks for ${triggerNodes.length} trigger nodes`,
 		);
 
@@ -386,7 +386,7 @@ export class LoadNodesAndCredentials {
 		const hooks = this.executionContextHookRegistry.getHookForTriggerType(node.name);
 
 		if (hooks.length > 0) {
-			this.logger.debug(`Found ${hooks.length} hooks for trigger node: ${node.name}`);
+			this.logger.warn(`Found ${hooks.length} hooks for trigger node: ${node.name}`);
 		}
 
 		// Only inject hook properties if there are applicable hooks
@@ -662,7 +662,7 @@ export class LoadNodesAndCredentials {
 			}
 
 			const reloader = debounce(async () => {
-				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+				this.logger.warn(`Hot reload triggered for ${loader.packageName}`);
 				try {
 					loader.reset();
 					await loader.loadAll();
@@ -701,7 +701,7 @@ export class LoadNodesAndCredentials {
 				);
 			}
 
-			this.logger.debug('Watching node folders for hot reload', {
+			this.logger.warn('Watching node folders for hot reload', {
 				loader: loader.packageName,
 				paths: watchPaths,
 			});
