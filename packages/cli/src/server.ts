@@ -336,10 +336,7 @@ export class Server extends AbstractServer {
 			);
 		});
 
-		this.logger.error('Setting up icon routes, frontendService:', {
-			hasFrontendService: !!frontendService,
-			frontendServiceType: frontendService?.constructor?.name
-		});
+		this.logger.error(`Setting up icon routes, frontendService: hasFrontendService=${!!frontendService}, frontendServiceType="${frontendService?.constructor?.name}"`);
 
 		if (frontendService) {
 			this.logger.warn('Registering icon routes');
@@ -354,62 +351,30 @@ export class Server extends AbstractServer {
 
 					// Debug logging
 					this.logger.error('=== ICON REQUEST START ===');
-					this.logger.warn('Icon request details:', {
-						originalUrl: req.originalUrl,
-						url: req.url,
-						basePath: this.basePath,
-						params: req.params,
-						scope,
-						packageName,
-						fullUrl: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
-						path: req.path,
-						query: req.query,
-						headers: {
-							host: req.get('host'),
-							'user-agent': req.get('user-agent'),
-							referer: req.get('referer')
-						}
-					});
+					this.logger.warn(`Icon request details: originalUrl="${req.originalUrl}", url="${req.url}", basePath="${this.basePath}", params=${JSON.stringify(req.params)}, scope="${scope}", packageName="${packageName}", fullUrl="${req.protocol}://${req.get('host')}${req.originalUrl}", path="${req.path}"`);
 
 					if (scope) {
 						const oldPackageName = packageName;
 						packageName = `@${scope}/${packageName}`;
-						this.logger.warn('Scope applied:', { oldPackageName, newPackageName: packageName, scope });
+						this.logger.warn(`Scope applied: oldPackageName="${oldPackageName}", newPackageName="${packageName}", scope="${scope}"`);
 					}
 
-					this.logger.warn('Calling resolveIcon:', { packageName, originalUrl: req.originalUrl });
-					this.logger.warn('loadNodesAndCredentials instance:', {
-						instanceType: this.loadNodesAndCredentials?.constructor?.name,
-						hasResolveIcon: typeof this.loadNodesAndCredentials?.resolveIcon === 'function'
-					});
+					this.logger.warn(`Calling resolveIcon: packageName="${packageName}", originalUrl="${req.originalUrl}"`);
+					this.logger.warn(`loadNodesAndCredentials instance: instanceType="${this.loadNodesAndCredentials?.constructor?.name}", hasResolveIcon=${typeof this.loadNodesAndCredentials?.resolveIcon === 'function'}`);
 
 					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
 
-					this.logger.warn('Icon resolution result:', {
-						filePath,
-						packageName,
-						originalUrl: req.originalUrl,
-						fileExists: filePath ? 'to be checked' : 'no file path returned'
-					});
+					this.logger.warn(`Icon resolution result: filePath="${filePath}", packageName="${packageName}", originalUrl="${req.originalUrl}", fileExists=${filePath ? 'to be checked' : 'no file path returned'}`);
 
 				if (filePath) {
 					try {
-						this.logger.warn('Checking if icon file exists:', {
-							filePath,
-							absolutePath: path.isAbsolute(filePath) ? 'yes' : 'no'
-						});
+						this.logger.warn(`Checking if icon file exists: filePath="${filePath}", absolutePath=${path.isAbsolute(filePath) ? 'yes' : 'no'}`);
 						await fsAccess(filePath);
-						this.logger.warn('Icon file exists, serving:', {
-							filePath
-						});
+						this.logger.warn(`Icon file exists, serving: filePath="${filePath}"`);
 							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
 					} catch (error) {
-						this.logger.warn('Icon file access error:', {
-							filePath,
-							error: (error as Error).message,
-							errorStack: (error as Error).stack,
-							errorName: (error as Error).name
-						});
+						const err = error as Error;
+						this.logger.warn(`Icon file access error: filePath="${filePath}", error="${err.message}", errorName="${err.name}"`);
 						// Continue to 404
 					}
 				} else {

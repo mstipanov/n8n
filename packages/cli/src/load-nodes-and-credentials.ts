@@ -204,46 +204,46 @@ export class LoadNodesAndCredentials {
 	 * Besides having different icon loading strategies, encoding an absolute path in URLs seems a security risk.
 	 */
 	resolveIcon(packageName: string, url: string): string | undefined {
-		this.logger.warn('resolveIcon called:', { packageName, url });
+		this.logger.warn(`resolveIcon called: packageName="${packageName}", url="${url}"`);
 
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
-		this.logger.warn('Is custom package:', { isCustom, CUSTOM_NODES_PACKAGE_NAME });
+		this.logger.warn(`Is custom package: isCustom=${isCustom}, CUSTOM_NODES_PACKAGE_NAME="${CUSTOM_NODES_PACKAGE_NAME}"`);
 
 		const loader = this.loaders[packageName];
 		if (!loader) {
-			this.logger.error('No loader found for package:', { packageName, availableLoaders: Object.keys(this.loaders) });
+			this.logger.error(`No loader found for package: packageName="${packageName}", availableLoaders=${JSON.stringify(Object.keys(this.loaders))}`);
 			return undefined;
 		}
 
-		this.logger.warn('Loader found:', { packageName, loaderDirectory: loader.directory, loaderType: loader.constructor.name });
+		this.logger.warn(`Loader found: packageName="${packageName}", loaderDirectory="${loader.directory}", loaderType="${loader.constructor.name}"`);
 
 		const resolvePath = (iconPath: string) => {
 			const resolved = path.resolve(loader.directory, iconPath);
-			this.logger.warn('resolvePath called:', { iconPath, loaderDirectory: loader.directory, resolved });
+			this.logger.warn(`resolvePath called: iconPath="${iconPath}", loaderDirectory="${loader.directory}", resolved="${resolved}"`);
 			return resolved;
 		};
 
 		const resolvePathCustom = (path: string) => {
 			if (isWindowsFilePath(path)) {
-				this.logger.warn('resolvePathCustom - Windows path:', { path });
+				this.logger.warn(`resolvePathCustom - Windows path: path="${path}"`);
 				return path;
 			}
 			const result = path.startsWith('/') ? path : '/' + path;
-			this.logger.warn('resolvePathCustom:', { path, result });
+			this.logger.warn(`resolvePathCustom: path="${path}", result="${result}"`);
 			return result;
 		};
 
 		const pathPrefix = `/icons/${packageName}/`;
-		this.logger.warn('Path prefix:', { pathPrefix });
+		this.logger.warn(`Path prefix: pathPrefix="${pathPrefix}"`);
 
 		const urlFilePath = url.substring(pathPrefix.length);
-		this.logger.warn('URL file path:', { urlFilePath, url, pathPrefixLength: pathPrefix.length });
+		this.logger.warn(`URL file path: urlFilePath="${urlFilePath}", url="${url}", pathPrefixLength=${pathPrefix.length}`);
 
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
-		this.logger.warn('Final file path:', { filePath, isCustom });
+		this.logger.warn(`Final file path: filePath="${filePath}", isCustom=${isCustom}`);
 
 		const isContained = isContainedWithin(loader.directory, filePath);
-		this.logger.warn('Path containment check:', { loaderDirectory: loader.directory, filePath, isContained });
+		this.logger.warn(`Path containment check: loaderDirectory="${loader.directory}", filePath="${filePath}", isContained=${isContained}`);
 
 		return isContained ? filePath : undefined;
 	}
