@@ -229,7 +229,7 @@ export class LoadNodesAndCredentials {
 		};
 
 		const pathPrefix = `/icons/${packageName}/`;
-		const urlFilePath = url.substring(pathPrefix.length);
+		const urlFilePath = url.substring(pathPrefix.length).replace(/^\//, '');
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;

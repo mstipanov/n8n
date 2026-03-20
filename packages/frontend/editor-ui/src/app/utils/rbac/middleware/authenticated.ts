@@ -13,7 +13,18 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	// to avoid infinite redirect loops
 	const url = new URL(window.location.href);
 	url.searchParams.delete('redirect');
-	const redirect = to.query.redirect ?? encodeURIComponent(`${url.pathname}${url.search}`);
+
+	// Strip base path for N8N_PATH deployments
+	let pathname = url.pathname;
+	if (window.BASE_PATH && pathname.startsWith(window.BASE_PATH)) {
+		pathname = pathname.substring(window.BASE_PATH.length);
+		// Ensure pathname starts with /
+		if (!pathname.startsWith('/')) {
+			pathname = '/' + pathname;
+		}
+	}
+
+	const redirect = to.query.redirect ?? encodeURIComponent(`${pathname}${url.search}`);
 
 	const valid = isAuthenticated(options);
 	if (!valid) {

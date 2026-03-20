@@ -58,3 +58,4 @@ packages/cli/src/commands/export/outputs
 .claude/settings.local.json
 lefthook-local.yml
 .playwright-mcp
+/.pnpm-store/

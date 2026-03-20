@@ -330,7 +330,7 @@ export class Server extends AbstractServer {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.url);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);

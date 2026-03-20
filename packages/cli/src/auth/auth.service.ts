@@ -211,11 +211,13 @@ export class AuthService {
 
 		const token = this.issueJWT(user, usedMfa, browserId);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
+		const cookiePath = this.globalConfig.path !== '/' ? this.globalConfig.path : '/';
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
 			sameSite: samesite,
 			secure,
+			path: cookiePath,
 		});
 	}
 
@@ -279,13 +281,18 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		// Strip base path for N8N_PATH deployments
+		const normalizedEndpoint = this.globalConfig.path !== '/' && endpoint.startsWith(this.globalConfig.path)
+			? endpoint.substring(this.globalConfig.path.length)
+			: endpoint;
+
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(normalizedEndpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint} (normalized: ${normalizedEndpoint})`);
 		} else if (
 			jwtPayload.browserId &&
 			(!browserId || jwtPayload.browserId !== this.hash(browserId))
 		) {
-			this.logger.warn(`browserId check failed on ${endpoint}`);
+			this.logger.warn(`browserId check failed on ${endpoint} (normalized: ${normalizedEndpoint})`);
 			throw new AuthError('Unauthorized');
 		}
 	}

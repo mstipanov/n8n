@@ -30,7 +30,7 @@ function createLazySwaggerMiddleware(
 			// from the Swagger UI
 			swaggerDocument.server = [
 				{
-					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}`,
 				},
 			];
 
