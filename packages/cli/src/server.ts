@@ -471,6 +471,14 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
+				this.endpointWebhook,          // Live webhooks
+				this.endpointWebhookTest,      // Test webhooks
+				this.endpointWebhookWaiting,   // Waiting webhooks
+				this.endpointForm,             // Live forms
+				this.endpointFormTest,         // Test forms
+				this.endpointFormWaiting,      // Waiting forms
+				this.endpointMcp,              // Live MCP
+				this.endpointMcpTest,          // Test MCP
 				isApiEnabled() ? '' : publicApiEndpoint,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);

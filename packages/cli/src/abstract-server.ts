@@ -237,36 +237,36 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			this.app.all(this.withBasePath(`/${this.endpointForm}/*path`), liveWebhooksRequestHandler);
 
 			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
+			this.app.all(this.withBasePath(`/${this.endpointWebhook}/*path`), liveWebhooksRequestHandler);
 
 			// Register a handler for waiting forms
 			this.app.all(
-				`/${this.endpointFormWaiting}/:path{/:suffix}`,
+				this.withBasePath(`/${this.endpointFormWaiting}/:path{/:suffix}`),
 				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
 			this.app.all(
-				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
+				this.withBasePath(`/${this.endpointWebhookWaiting}/:path{/:suffix}`),
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
+			this.app.all(this.withBasePath(`/${this.endpointMcp}/*path`), liveWebhooksRequestHandler);
 		}
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(this.withBasePath(`/${this.endpointFormTest}/*path`), testWebhooksRequestHandler);
+			this.app.all(this.withBasePath(`/${this.endpointWebhookTest}/*path`), testWebhooksRequestHandler);
 
 			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(this.withBasePath(`/${this.endpointMcpTest}/*path`), testWebhooksRequestHandler);
 		}
 
 		// Block bots from scanning the application
@@ -309,6 +309,18 @@ export abstract class AbstractServer {
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
+	}
+
+	/**
+	 * Prefix a path with the base path if basePath is not '/'
+	 */
+	private withBasePath(path: string): string {
+		if (this.basePath === '/') {
+			return path;
+		}
+		// Ensure path starts with /
+		const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+		return `${this.basePath}${normalizedPath}`;
 	}
 
 	/**
