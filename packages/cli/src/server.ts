@@ -181,14 +181,27 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (isApiEnabled()) {
+			this.logger.info(`[Public API Debug] Public API is enabled, loading versions...`);
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+
+			this.logger.info(`[Public API Debug] Mounting ${apiRouters.length} public API router(s) at path: ${withBasePath(publicApiEndpoint)}`);
+
 			// Mount public API routers with base path
 			for (const router of apiRouters) {
 				this.app.use(withBasePath(publicApiEndpoint), router);
+				this.logger.info(`[Public API Debug] Router mounted at: ${withBasePath(publicApiEndpoint)}`);
 			}
+
 			if (frontendService) {
 				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
+				this.logger.info(`[Public API Debug] Frontend settings updated with latest version: ${apiLatestVersion}`);
 			}
+
+			if (apiRouters.length === 0) {
+				this.logger.warn(`[Public API Debug] WARNING: No public API routers were mounted!`);
+			}
+		} else {
+			this.logger.info(`[Public API Debug] Public API is NOT enabled (isApiEnabled() returned false)`);
 		}
 
 		// Extract BrowserId from headers

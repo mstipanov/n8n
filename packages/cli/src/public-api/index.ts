@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
@@ -184,22 +185,62 @@ function createApiRouter(
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
+	// Get logger instance
+	const logger = Container.get(Logger);
+
+	logger.info(`[Public API Debug] Loading public API versions, endpoint: "${publicApiEndpoint}"`);
+	logger.info(`[Public API Debug] Current directory: ${__dirname}`);
+
 	const folders = await fs.readdir(__dirname);
+	logger.info(`[Public API Debug] All folders in directory: ${folders.join(', ')}`);
+
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
+	logger.info(`[Public API Debug] Version folders found: ${versions.join(', ')}`);
+
+	if (versions.length === 0) {
+		logger.warn('[Public API Debug] No version folders found! Public API will not be mounted.');
+	}
 
 	const apiRouters = versions.map((version) => {
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');
+		logger.info(`[Public API Debug] Creating API router for version: ${version}, OpenAPI path: ${openApiPath}`);
+
+		// Check if OpenAPI spec exists
+		fs.access(openApiPath).then(() => {
+			logger.info(`[Public API Debug] OpenAPI spec exists for version ${version}: ${openApiPath}`);
+		}).catch(() => {
+			logger.warn(`[Public API Debug] OpenAPI spec NOT found for version ${version}: ${openApiPath}`);
+		});
+
 		return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 	});
 
 	const version = versions.pop()?.charAt(1);
+	const latestVersion = version ? Number(version) : 1;
+
+	logger.info(`[Public API Debug] Total API routers created: ${apiRouters.length}, Latest version: ${latestVersion}`);
+	logger.info(`[Public API Debug] Public API will be mounted at: /${publicApiEndpoint}/v${latestVersion}/...`);
 
 	return {
 		apiRouters,
-		apiLatestVersion: version ? Number(version) : 1,
+		apiLatestVersion: latestVersion,
 	};
 };
 
 export function isApiEnabled(): boolean {
-	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
+	const globalConfig = Container.get(GlobalConfig);
+	const license = Container.get(License);
+	const logger = Container.get(Logger);
+
+	const publicApiDisabled = globalConfig.publicApi.disabled;
+	const apiDisabledByLicense = license.isAPIDisabled();
+	const isEnabled = !publicApiDisabled && !apiDisabledByLicense;
+
+	logger.info(`[Public API Debug] Checking if API is enabled:`);
+	logger.info(`[Public API Debug]   - publicApi.disabled: ${publicApiDisabled}`);
+	logger.info(`[Public API Debug]   - license.isAPIDisabled(): ${apiDisabledByLicense}`);
+	logger.info(`[Public API Debug]   - Result: ${isEnabled ? 'ENABLED' : 'DISABLED'}`);
+	logger.info(`[Public API Debug]   - Public API endpoint path: "${globalConfig.publicApi.path}"`);
+
+	return isEnabled;
 }
