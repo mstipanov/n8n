@@ -159,7 +159,9 @@ export class Server extends AbstractServer {
 
 		// Helper function to prefix a path with the base path
 		const withBasePath = (path: string) => {
-			return basePath + path;
+			// Ensure path starts with /
+			const normalizedPath = path.startsWith('/') || basePath !== '/' ? path : `/${path}`;
+			return basePath + normalizedPath;
 		};
 
 		if (this.globalConfig.endpoints.metrics.enable) {
