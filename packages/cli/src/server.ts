@@ -159,8 +159,12 @@ export class Server extends AbstractServer {
 
 		// Helper function to prefix a path with the base path
 		const withBasePath = (path: string) => {
-			// Ensure path starts with /
-			const normalizedPath = path.startsWith('/') || basePath !== '/' ? path : `/${path}`;
+			// Ensure path starts with / unless basePath is /
+			let normalizedPath = path.startsWith('/') ? path : `/${path}`;
+			// If basePath is / and normalizedPath starts with /, remove the leading /
+			if (basePath === '/' && normalizedPath.startsWith('/')) {
+				normalizedPath = normalizedPath.substring(1);
+			}
 			return basePath + normalizedPath;
 		};
 
@@ -202,6 +206,18 @@ export class Server extends AbstractServer {
 			if (apiRouters.length === 0) {
 				this.logger.warn(`[Public API Debug] WARNING: No public API routers were mounted!`);
 			}
+
+			// Add debug middleware for API requests
+			const apiMountPath = withBasePath(publicApiEndpoint);
+			this.app.use((req: express.Request, res: express.Response, next) => {
+				// Check if this looks like an API request
+				const fullPath = req.originalUrl;
+				if (fullPath.includes('/api/') || fullPath.endsWith('/api') ||
+					(fullPath.includes(apiMountPath) && apiMountPath !== '')) {
+					this.logger.warn(`[API Request Debug] ${req.method} ${fullPath} - Mount path: "${apiMountPath}", Path: "${req.path}"`);
+				}
+				next();
+			});
 		} else {
 			this.logger.info(`[Public API Debug] Public API is NOT enabled (isApiEnabled() returned false)`);
 		}
