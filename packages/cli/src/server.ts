@@ -209,7 +209,7 @@ export class Server extends AbstractServer {
 
 			// Add debug middleware for API requests
 			const apiMountPath = withBasePath(publicApiEndpoint);
-			this.app.use((req: express.Request, res: express.Response, next) => {
+			this.app.use((req: express.Request, _res: express.Response, next) => {
 				// Check if this looks like an API request
 				const fullPath = req.originalUrl;
 				if (fullPath.includes('/api/') || fullPath.endsWith('/api') ||

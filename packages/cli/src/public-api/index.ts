@@ -71,6 +71,10 @@ function createLazySwaggerMiddleware(
 		}
 
 		void cachedRouter(req, res, next);
+	} catch (error) {
+		logger.error(`[Public API Debug] Error in lazy swagger middleware: ${(error as Error).message}`);
+		next(error);
+	}
 	};
 }
 
@@ -83,7 +87,12 @@ function createLazyValidatorMiddleware(
 	let initPromise: Promise<Router> | undefined;
 
 	return async (req, res, next) => {
-		if (!cachedRouter) {
+		const logger = Container.get(Logger);
+		logger.info(`[Public API Debug] Validator middleware called for: ${req.method} ${req.originalUrl}, path: ${req.path}`);
+
+		try {
+			if (!cachedRouter) {
+				logger.info(`[Public API Debug] Initializing validator router for version ${version}`);
 			initPromise ??= (async () => {
 				const { middleware: openApiValidatorMiddleware } = await import(
 					'express-openapi-validator'
@@ -135,10 +144,10 @@ function createLazyValidatorMiddleware(
 		}
 
 		void cachedRouter(req, res, next);
-		} catch (error) {
-			logger.error(`[Public API Debug] Error in lazy middleware: ${(error as Error).message}`);
-			next(error);
-		}
+	} catch (error) {
+		logger.error(`[Public API Debug] Error in lazy validator middleware: ${(error as Error).message}`);
+		next(error);
+	}
 	};
 }
 
