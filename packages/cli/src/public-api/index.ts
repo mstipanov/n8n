@@ -21,7 +21,13 @@ function createLazySwaggerMiddleware(
 	let cachedRouter: Router | undefined;
 
 	return async (req, res, next) => {
-		if (!cachedRouter) {
+		const logger = Container.get(Logger);
+
+		try {
+			logger.info(`[Public API Debug] Lazy middleware called for: ${req.method} ${req.originalUrl}, path: ${req.path}`);
+
+			if (!cachedRouter) {
+				logger.info(`[Public API Debug] Initializing lazy router for version ${version}`);
 			const globalConfig = Container.get(GlobalConfig);
 			let n8nPath = globalConfig.path;
 			// Normalize the path to ensure it starts with / and ends with /
@@ -37,6 +43,10 @@ function createLazySwaggerMiddleware(
 
 			const { default: YAML } = await import('yamljs');
 			const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
+			logger.info(`[Public API Debug] OpenAPI spec loaded, has paths: ${swaggerDocument.paths ? 'YES' : 'NO'}`);
+			if (swaggerDocument.paths) {
+				logger.info(`[Public API Debug] OpenAPI paths: ${Object.keys(swaggerDocument.paths).join(', ')}`);
+			}
 			// add the server depending on the config so the user can interact with the API
 			// from the Swagger UI
 			swaggerDocument.server = [
@@ -125,6 +135,10 @@ function createLazyValidatorMiddleware(
 		}
 
 		void cachedRouter(req, res, next);
+		} catch (error) {
+			logger.error(`[Public API Debug] Error in lazy middleware: ${(error as Error).message}`);
+			next(error);
+		}
 	};
 }
 
