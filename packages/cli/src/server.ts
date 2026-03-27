@@ -510,7 +510,7 @@ export class Server extends AbstractServer {
 				this.endpointFormWaiting,      // Waiting forms
 				this.endpointMcp,              // Live MCP
 				this.endpointMcpTest,          // Test MCP
-				isApiEnabled() ? '' : publicApiEndpoint,
+				isApiEnabled() ? publicApiEndpoint : '',
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
