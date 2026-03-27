@@ -163,7 +163,7 @@ servers:
 paths:
   /test-inline:
     get:
-      x-eov-operation-id: testInline
+      x-eov-operation-id: getWorkflows  # Use existing handler
       x-eov-operation-handler: v1/handlers/workflows/workflows.handler
       responses:
         '200':
