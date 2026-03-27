@@ -104,6 +104,14 @@ function createLazyValidatorMiddleware(
 					'express-openapi-validator'
 				);
 				const router = express.Router();
+
+				// DEBUG: Add a test route to see if router is working
+				router.get('/test', (req, res) => {
+					const logger = Container.get(Logger);
+					logger.info(`[Public API Debug] Test route called: ${req.method} ${req.originalUrl}`);
+					res.json({ test: 'ok', path: req.path, originalUrl: req.originalUrl });
+				});
+
 				router.use(
 					openApiValidatorMiddleware({
 						apiSpec: openApiSpecPath,
