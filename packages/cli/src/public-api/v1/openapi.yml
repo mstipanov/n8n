@@ -14,7 +14,7 @@ externalDocs:
   description: n8n API documentation
   url: https://docs.n8n.io/api/
 servers:
-  - url: /api/v1
+  - url: /v1
 tags:
   - name: User
     description: Operations about users
