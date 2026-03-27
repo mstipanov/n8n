@@ -105,11 +105,18 @@ function createLazyValidatorMiddleware(
 				);
 				const router = express.Router();
 
-				// DEBUG: Add a test route to see if router is working
+				// DEBUG: Add test routes to see if router is working
 				router.get('/test', (req, res) => {
 					const logger = Container.get(Logger);
 					logger.info(`[Public API Debug] Test route called: ${req.method} ${req.originalUrl}`);
 					res.json({ test: 'ok', path: req.path, originalUrl: req.originalUrl });
+				});
+
+				// DEBUG: Add a /workflows test route
+				router.get('/workflows', (req, res) => {
+					const logger = Container.get(Logger);
+					logger.info(`[Public API Debug] Workflows test route called: ${req.method} ${req.originalUrl}`);
+					res.json({ workflows_test: 'ok', path: req.path, originalUrl: req.originalUrl });
 				});
 
 				router.use(
@@ -152,6 +159,15 @@ function createLazyValidatorMiddleware(
 						},
 					}),
 				);
+
+				// DEBUG: Add a catch-all route to see if requests pass through validator
+				router.use((req, res, next) => {
+					const logger = Container.get(Logger);
+					logger.info(`[Public API Debug] Catch-all route: ${req.method} ${req.originalUrl}, path: ${req.path}`);
+					// Don't call next() - this is the end of the router
+					res.status(404).json({ error: 'Not found in router', path: req.path });
+				});
+
 				return router;
 			})();
 			cachedRouter = await initPromise;
