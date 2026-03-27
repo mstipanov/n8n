@@ -187,39 +187,16 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (isApiEnabled()) {
-			this.logger.info(`[Public API Debug] Public API is enabled, loading versions...`);
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 
-			this.logger.info(`[Public API Debug] Mounting ${apiRouters.length} public API router(s) at path: ${withBasePath(publicApiEndpoint)}`);
-
-			// Mount public API routers with base path
+			// Mount public API routers with base path prefix
 			for (const router of apiRouters) {
 				this.app.use(withBasePath(publicApiEndpoint), router);
-				this.logger.info(`[Public API Debug] Router mounted at: ${withBasePath(publicApiEndpoint)}`);
 			}
 
 			if (frontendService) {
 				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-				this.logger.info(`[Public API Debug] Frontend settings updated with latest version: ${apiLatestVersion}`);
 			}
-
-			if (apiRouters.length === 0) {
-				this.logger.warn(`[Public API Debug] WARNING: No public API routers were mounted!`);
-			}
-
-			// Add debug middleware for API requests
-			const apiMountPath = withBasePath(publicApiEndpoint);
-			this.app.use((req: express.Request, _res: express.Response, next) => {
-				// Check if this looks like an API request
-				const fullPath = req.originalUrl;
-				if (fullPath.includes('/api/') || fullPath.endsWith('/api') ||
-					(fullPath.includes(apiMountPath) && apiMountPath !== '')) {
-					this.logger.warn(`[API Request Debug] ${req.method} ${fullPath} - Mount path: "${apiMountPath}", Path: "${req.path}"`);
-				}
-				next();
-			});
-		} else {
-			this.logger.info(`[Public API Debug] Public API is NOT enabled (isApiEnabled() returned false)`);
 		}
 
 		// Extract BrowserId from headers
