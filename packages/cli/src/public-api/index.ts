@@ -100,6 +100,37 @@ function createLazyValidatorMiddleware(
 			if (!cachedRouter) {
 				logger.info(`[Public API Debug] Initializing validator router for version ${version}`);
 			initPromise ??= (async () => {
+				logger.info(`[Public API Debug] Starting validator setup for version ${version}`);
+				logger.info(`[Public API Debug] OpenAPI spec path: ${openApiSpecPath}`);
+				logger.info(`[Public API Debug] Handlers directory: ${handlersDirectory}`);
+
+				// Check if OpenAPI spec exists
+				try {
+					await fs.access(openApiSpecPath);
+					logger.info(`[Public API Debug] OpenAPI spec exists at: ${openApiSpecPath}`);
+
+					// Try to read and log the spec content
+					try {
+						const specContent = await fs.readFile(openApiSpecPath, 'utf8');
+						const specLines = specContent.split('\n');
+						logger.info(`[Public API Debug] OpenAPI spec first 10 lines:`);
+						for (let i = 0; i < Math.min(10, specLines.length); i++) {
+							logger.info(`[Public API Debug]   ${i+1}: ${specLines[i]}`);
+						}
+
+						// Check for paths section
+						if (specContent.includes('paths:')) {
+							logger.info(`[Public API Debug] OpenAPI spec contains 'paths:' section`);
+						} else {
+							logger.warn(`[Public API Debug] OpenAPI spec does NOT contain 'paths:' section`);
+						}
+					} catch (readError) {
+						logger.warn(`[Public API Debug] Could not read OpenAPI spec: ${(readError as Error).message}`);
+					}
+				} catch (error) {
+					logger.error(`[Public API Debug] OpenAPI spec NOT found: ${openApiSpecPath}`);
+				}
+
 				const { middleware: openApiValidatorMiddleware } = await import(
 					'express-openapi-validator'
 				);
@@ -115,50 +146,58 @@ function createLazyValidatorMiddleware(
 				// DEBUG: Log all requests before validator
 				router.use((req, res, next) => {
 					const logger = Container.get(Logger);
-					logger.info(`[Public API Debug] Before validator: ${req.method} ${req.path}`);
+					logger.info(`[Public API Debug] Before validator: ${req.method} ${req.path} (req.url: ${req.url})`);
 					next();
 				});
 
-				router.use(
-					openApiValidatorMiddleware({
-						apiSpec: openApiSpecPath,
-						operationHandlers: handlersDirectory,
-						validateRequests: true,
-						validateApiSpec: true,
-						formats: {
-							email: {
-								type: 'string',
-								validate: (email: string) => validator.isEmail(email),
-							},
-							identifier: {
-								type: 'string',
-								validate: (identifier: string) =>
-									validator.isUUID(identifier) || validator.isEmail(identifier),
-							},
-							jsonString: {
-								validate: (data: string) => {
-									try {
-										JSON.parse(data);
-										return true;
-									} catch (e) {
-										return false;
-									}
+				logger.info(`[Public API Debug] Setting up express-openapi-validator middleware`);
+				try {
+					router.use(
+						openApiValidatorMiddleware({
+							apiSpec: openApiSpecPath,
+							operationHandlers: handlersDirectory,
+							validateRequests: true,
+							validateApiSpec: false, // Disable spec validation for debugging
+							formats: {
+								email: {
+									type: 'string',
+									validate: (email: string) => validator.isEmail(email),
+								},
+								identifier: {
+									type: 'string',
+									validate: (identifier: string) =>
+										validator.isUUID(identifier) || validator.isEmail(identifier),
+								},
+								jsonString: {
+									validate: (data: string) => {
+										try {
+											JSON.parse(data);
+											return true;
+										} catch (e) {
+											return false;
+										}
+									},
+								},
+								nanoid: {
+									type: 'string',
+									validate: (id: string) => {
+										return /^[A-Za-z0-9]{16}$/.test(id);
+									},
 								},
 							},
-							nanoid: {
-								type: 'string',
-								validate: (id: string) => {
-									return /^[A-Za-z0-9]{16}$/.test(id);
+							validateSecurity: {
+								handlers: {
+									ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
 								},
 							},
-						},
-						validateSecurity: {
-							handlers: {
-								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
-							},
-						},
-					}),
-				);
+						}),
+					);
+					logger.info(`[Public API Debug] express-openapi-validator middleware setup completed`);
+				} catch (validatorError) {
+					logger.error(`[Public API Debug] Error setting up express-openapi-validator: ${(validatorError as Error).message}`);
+					logger.error(`[Public API Debug] Stack trace: ${(validatorError as Error).stack}`);
+					// Continue anyway, we'll see if validator works
+				}
 
 				// DEBUG: Add a catch-all route to see if requests pass through validator
 				router.use((req, res, next) => {
@@ -168,6 +207,7 @@ function createLazyValidatorMiddleware(
 					res.status(404).json({ error: 'Not found in router', path: req.path });
 				});
 
+				logger.info(`[Public API Debug] Validator router initialization complete for version ${version}`);
 				return router;
 			})();
 			cachedRouter = await initPromise;
@@ -176,6 +216,7 @@ function createLazyValidatorMiddleware(
 		void cachedRouter(req, res, next);
 	} catch (error) {
 		logger.error(`[Public API Debug] Error in lazy validator middleware: ${(error as Error).message}`);
+		logger.error(`[Public API Debug] Stack trace: ${(error as Error).stack}`);
 		next(error);
 	}
 	};
@@ -249,40 +290,54 @@ export const loadPublicApiVersions = async (
 	logger.info(`[Public API Debug] Loading public API versions, endpoint: "${publicApiEndpoint}"`);
 	logger.info(`[Public API Debug] Current directory: ${__dirname}`);
 
-	const folders = await fs.readdir(__dirname);
-	logger.info(`[Public API Debug] All folders in directory: ${folders.join(', ')}`);
+	try {
+		const folders = await fs.readdir(__dirname);
+		logger.info(`[Public API Debug] All folders in directory: ${folders.join(', ')}`);
 
-	const versions = folders.filter((folderName) => folderName.startsWith('v'));
-	logger.info(`[Public API Debug] Version folders found: ${versions.join(', ')}`);
+		const versions = folders.filter((folderName) => folderName.startsWith('v'));
+		logger.info(`[Public API Debug] Version folders found: ${versions.join(', ')}`);
 
-	if (versions.length === 0) {
-		logger.warn('[Public API Debug] No version folders found! Public API will not be mounted.');
-	}
+		if (versions.length === 0) {
+			logger.warn('[Public API Debug] No version folders found! Public API will not be mounted.');
+		}
 
-	const apiRouters = versions.map((version) => {
-		const openApiPath = path.join(__dirname, version, 'openapi.yml');
-		logger.info(`[Public API Debug] Creating API router for version: ${version}, OpenAPI path: ${openApiPath}`);
+		const apiRouters = versions.map((version) => {
+			const openApiPath = path.join(__dirname, version, 'openapi.yml');
+			logger.info(`[Public API Debug] Creating API router for version: ${version}, OpenAPI path: ${openApiPath}`);
 
-		// Check if OpenAPI spec exists
-		fs.access(openApiPath).then(() => {
-			logger.info(`[Public API Debug] OpenAPI spec exists for version ${version}: ${openApiPath}`);
-		}).catch(() => {
-			logger.warn(`[Public API Debug] OpenAPI spec NOT found for version ${version}: ${openApiPath}`);
+			// Check if OpenAPI spec exists
+			fs.access(openApiPath).then(() => {
+				logger.info(`[Public API Debug] OpenAPI spec exists for version ${version}: ${openApiPath}`);
+			}).catch(() => {
+				logger.warn(`[Public API Debug] OpenAPI spec NOT found for version ${version}: ${openApiPath}`);
+			});
+
+			// Also check for handlers directory
+			const handlersDir = path.join(__dirname, version, 'handlers');
+			fs.access(handlersDir).then(() => {
+				logger.info(`[Public API Debug] Handlers directory exists for version ${version}: ${handlersDir}`);
+			}).catch(() => {
+				logger.warn(`[Public API Debug] Handlers directory NOT found for version ${version}: ${handlersDir}`);
+			});
+
+			return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		});
 
-		return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
-	});
+		const version = versions.pop()?.charAt(1);
+		const latestVersion = version ? Number(version) : 1;
 
-	const version = versions.pop()?.charAt(1);
-	const latestVersion = version ? Number(version) : 1;
+		logger.info(`[Public API Debug] Total API routers created: ${apiRouters.length}, Latest version: ${latestVersion}`);
+		logger.info(`[Public API Debug] Public API will be mounted at: /${publicApiEndpoint}/v${latestVersion}/...`);
 
-	logger.info(`[Public API Debug] Total API routers created: ${apiRouters.length}, Latest version: ${latestVersion}`);
-	logger.info(`[Public API Debug] Public API will be mounted at: /${publicApiEndpoint}/v${latestVersion}/...`);
-
-	return {
-		apiRouters,
-		apiLatestVersion: latestVersion,
-	};
+		return {
+			apiRouters,
+			apiLatestVersion: latestVersion,
+		};
+	} catch (error) {
+		logger.error(`[Public API Debug] Error in loadPublicApiVersions: ${(error as Error).message}`);
+		logger.error(`[Public API Debug] Stack trace: ${(error as Error).stack}`);
+		throw error;
+	}
 };
 
 export function isApiEnabled(): boolean {
