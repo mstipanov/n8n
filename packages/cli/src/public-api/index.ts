@@ -76,13 +76,17 @@ function createLazyValidatorMiddleware(
 				// Fix: load the spec with $ref resolution, then set servers.url
 				// to match the actual runtime base URL (req.baseUrl).
 				const $RefParser = await import('@apidevtools/json-schema-ref-parser');
-				const apiSpec = (await $RefParser.bundle(openApiSpecPath)) as JsonObject;
+				const bundledSpec = await $RefParser.bundle(openApiSpecPath);
+				// Override servers.url to match the runtime base path so
+				// express-openapi-validator can match req.originalUrl correctly
+				const apiSpec = bundledSpec as Record<string, unknown>;
 				apiSpec.servers = [{ url: req.baseUrl }];
 
 				const router = express.Router();
 				router.use(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					openApiValidatorMiddleware({
-						apiSpec,
+						apiSpec: apiSpec as any,
 						operationHandlers: handlersDirectory,
 						validateRequests: true,
 						validateApiSpec: true,

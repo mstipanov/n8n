@@ -56,7 +56,7 @@ echo "Step 4: Updating Dockerfile comment..."
 DOCKERFILE="/Users/mstipanov/Projects/infobip-n8n-ha/Dockerfile"
 if [[ -f "$DOCKERFILE" ]]; then
     # Find and update the echo line - use | as delimiter to avoid issues with / in commit message
-    sed -i '' "s|echo \"Cloning n8n - N8N API debugging [0-9]*\"|echo \"Cloning n8n - $COMMIT_MSG\"|" "$DOCKERFILE"
+    sed -i '' "s|echo \"Cloning n8n - N8N API debugging [0-9]*[^\"]*\"|echo \"Cloning n8n - $COMMIT_MSG\"|" "$DOCKERFILE"
     echo "Updated Dockerfile comment to: 'Cloning n8n - $COMMIT_MSG'"
 
     # Step 5: Commit and push Dockerfile change
