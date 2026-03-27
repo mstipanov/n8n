@@ -151,13 +151,51 @@ function createLazyValidatorMiddleware(
 				});
 
 				logger.info(`[Public API Debug] Setting up express-openapi-validator middleware`);
+
+				// TEST: Create a test OpenAPI spec with inline path in /tmp
+				const testSpecPath = '/tmp/test-openapi.yml';
+				const testSpecContent = `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+servers:
+  - url: /v1
+paths:
+  /test-inline:
+    get:
+      x-eov-operation-id: testInline
+      x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+      responses:
+        '200':
+          description: Test inline path
+  /workflows:
+    get:
+      x-eov-operation-id: getWorkflows
+      x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+      responses:
+        '200':
+          description: Get workflows test
+`;
+
 				try {
+					await fs.writeFile(testSpecPath, testSpecContent);
+					logger.info(`[Public API Debug] Created test OpenAPI spec at: ${testSpecPath}`);
+					logger.info(`[Public API Debug] Test spec has inline /test-inline and /workflows paths`);
+				} catch (writeError) {
+					logger.error(`[Public API Debug] Failed to write test spec: ${(writeError as Error).message}`);
+					logger.info(`[Public API Debug] Will try to use original spec instead`);
+				}
+
+				try {
+					// First try with the test spec (inline paths)
+					logger.info(`[Public API Debug] Trying validator with TEST spec (inline paths)...`);
 					router.use(
 						openApiValidatorMiddleware({
-							apiSpec: openApiSpecPath,
+							apiSpec: testSpecPath, // Use test spec instead of real one
 							operationHandlers: handlersDirectory,
-							validateRequests: true,
-							validateApiSpec: false, // Disable spec validation for debugging
+							validateRequests: false, // Disable request validation for testing
+							validateApiSpec: false,
+							validateResponses: false,
 							formats: {
 								email: {
 									type: 'string',
@@ -185,18 +223,30 @@ function createLazyValidatorMiddleware(
 									},
 								},
 							},
-							validateSecurity: {
-								handlers: {
-									ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
-								},
-							},
+							validateSecurity: false, // Disable security for testing
 						}),
 					);
-					logger.info(`[Public API Debug] express-openapi-validator middleware setup completed`);
+					logger.info(`[Public API Debug] express-openapi-validator middleware setup completed with TEST spec`);
 				} catch (validatorError) {
-					logger.error(`[Public API Debug] Error setting up express-openapi-validator: ${(validatorError as Error).message}`);
+					logger.error(`[Public API Debug] Error setting up express-openapi-validator with TEST spec: ${(validatorError as Error).message}`);
 					logger.error(`[Public API Debug] Stack trace: ${(validatorError as Error).stack}`);
-					// Continue anyway, we'll see if validator works
+					// Try with original spec but disable more validation
+					try {
+						logger.info(`[Public API Debug] Trying validator with original spec but disabled validation...`);
+						router.use(
+							openApiValidatorMiddleware({
+								apiSpec: openApiSpecPath,
+								operationHandlers: handlersDirectory,
+								validateRequests: false,
+								validateApiSpec: false,
+								validateResponses: false,
+								validateSecurity: false,
+							}),
+						);
+						logger.info(`[Public API Debug] express-openapi-validator middleware setup completed with original spec (validation disabled)`);
+					} catch (secondError) {
+						logger.error(`[Public API Debug] Also failed with original spec: ${(secondError as Error).message}`);
+					}
 				}
 
 				// DEBUG: Add a catch-all route to see if requests pass through validator
