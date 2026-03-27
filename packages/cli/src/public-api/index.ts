@@ -67,10 +67,22 @@ function createLazyValidatorMiddleware(
 				const { middleware: openApiValidatorMiddleware } = await import(
 					'express-openapi-validator'
 				);
+
+				// express-openapi-validator uses req.originalUrl for route matching
+				// and compares against routes built from servers.url + spec paths.
+				// When n8n has a base path (e.g. /infobip-noc-n8n), req.originalUrl
+				// is /infobip-noc-n8n/api/v1/workflows but the spec's servers.url
+				// is /api/v1, so routes like /api/v1/workflows won't match.
+				// Fix: load the spec with $ref resolution, then set servers.url
+				// to match the actual runtime base URL (req.baseUrl).
+				const $RefParser = await import('@apidevtools/json-schema-ref-parser');
+				const apiSpec = (await $RefParser.bundle(openApiSpecPath)) as JsonObject;
+				apiSpec.servers = [{ url: req.baseUrl }];
+
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
-						apiSpec: openApiSpecPath,
+						apiSpec,
 						operationHandlers: handlersDirectory,
 						validateRequests: true,
 						validateApiSpec: true,
