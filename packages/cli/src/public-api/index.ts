@@ -180,7 +180,23 @@ paths:
 				try {
 					await fs.writeFile(testSpecPath, testSpecContent);
 					logger.info(`[Public API Debug] Created test OpenAPI spec at: ${testSpecPath}`);
+					logger.info(`[Public API Debug] Test spec content:`);
+					logger.info(testSpecContent);
 					logger.info(`[Public API Debug] Test spec has inline /test-inline and /workflows paths`);
+
+					// TEST: Try to require the handler manually
+					const handlerPath = path.join(handlersDirectory, 'v1', 'handlers', 'workflows', 'workflows.handler');
+					logger.info(`[Public API Debug] Trying to require handler at: ${handlerPath}`);
+					try {
+						// Try with .js extension
+						const handler = require(handlerPath + '.js');
+						logger.info(`[Public API Debug] Handler required successfully!`);
+						logger.info(`[Public API Debug] Handler has getWorkflows: ${'getWorkflows' in handler}`);
+						logger.info(`[Public API Debug] Handler keys: ${Object.keys(handler).join(', ')}`);
+					} catch (requireError) {
+						logger.error(`[Public API Debug] Failed to require handler: ${(requireError as Error).message}`);
+						logger.error(`[Public API Debug] Stack: ${(requireError as Error).stack}`);
+					}
 				} catch (writeError) {
 					logger.error(`[Public API Debug] Failed to write test spec: ${(writeError as Error).message}`);
 					logger.info(`[Public API Debug] Will try to use original spec instead`);
