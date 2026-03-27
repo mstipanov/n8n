@@ -168,17 +168,17 @@ function createApiRouter(
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
 		apiController.use(
-			`/${publicApiEndpoint}/${version}/docs`,
+			`/${version}/docs`,
 			createLazySwaggerMiddleware(openApiSpecPath, publicApiEndpoint, version),
 		);
 	}
 
-	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+	apiController.get(`/${version}/openapi.yml`, (_, res) => {
 		res.sendFile(openApiSpecPath);
 	});
 
 	// Debug route
-	apiController.get(`/${publicApiEndpoint}/${version}/debug-test`, (_, res) => {
+	apiController.get(`/${version}/debug-test`, (_, res) => {
 		res.json({ debug: 'test', timestamp: Date.now(), version, publicApiEndpoint });
 	});
 
@@ -194,7 +194,7 @@ function createApiRouter(
 	};
 
 	apiController.use(
-		`/${publicApiEndpoint}/${version}`,
+		`/${version}`,
 		express.json(),
 		jsonParseErrorHandler,
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
