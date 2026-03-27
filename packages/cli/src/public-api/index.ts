@@ -21,6 +21,9 @@ function createLazySwaggerMiddleware(
 	let cachedRouter: Router | undefined;
 
 	return async (req, res, next) => {
+		// Fallback logging in case Logger fails
+		console.error(`[Public API Debug FALLBACK] Swagger middleware called: ${req.method} ${req.originalUrl}, path: ${req.path}`);
+
 		const logger = Container.get(Logger);
 
 		try {
@@ -87,6 +90,9 @@ function createLazyValidatorMiddleware(
 	let initPromise: Promise<Router> | undefined;
 
 	return async (req, res, next) => {
+		// Fallback logging in case Logger fails
+		console.error(`[Public API Debug FALLBACK] Validator middleware called: ${req.method} ${req.originalUrl}, path: ${req.path}`);
+
 		const logger = Container.get(Logger);
 		logger.info(`[Public API Debug] Validator middleware called for: ${req.method} ${req.originalUrl}, path: ${req.path}`);
 
@@ -169,6 +175,11 @@ function createApiRouter(
 
 	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
 		res.sendFile(openApiSpecPath);
+	});
+
+	// Debug route
+	apiController.get(`/${publicApiEndpoint}/${version}/debug-test`, (_, res) => {
+		res.json({ debug: 'test', timestamp: Date.now(), version, publicApiEndpoint });
 	});
 
 	// Error handler specifically for JSON parsing - must come immediately after express.json()
